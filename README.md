@@ -1,6 +1,6 @@
 <div align="center">
   <h1>?? Pravriddhi</h1>
-  <p><strong>A Full-Stack Talent, Skill & Career Intelligence Platform</strong></p>
+  <p><strong>Full-Stack FSD-II Capstone Project</strong></p>
   <br/>
   <a href="https://hiteshchugh-2006.github.io/pravriddhi/" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-View_Now-success?style=for-the-badge" alt="Live Demo" />
@@ -8,9 +8,21 @@
   <br/><br/>
 </div>
 
+## ?? Academic Details
+
+- **Project Type:** Full-Stack FSD-II Capstone Project
+- **Student Name:** Hitesh Chugh
+- **UID:** 24BAI70280
+- **Section:** 24AML-2(B)
+- **Semester:** 5th Semester
+- **Branch:** BE CSE (AIML)
+- **Supervisor:** Ms. Amandeep Kaur Sekhon
+
+---
+
 ## ?? Overview
 
-**Pravriddhi** is a comprehensive career development ecosystem that bridges the gap between your current capabilities and your future career goals. Designed for students, job seekers, and professionals, it provides actionable insights, personalized learning roadmaps, AI-driven mentorship, and an integrated Resume Studio to help you align your skills with real-world industry demands. 
+**Pravriddhi** is a full-stack talent, skill, and career intelligence platform. Its core purpose is to help users understand their current skills and capabilities, identify gaps for a target career role, discover suitable career paths and opportunities, create personalized development plans, and explore possible future career scenarios.
 
 ## ? The Problem
 
@@ -23,11 +35,11 @@ In today's fast-paced job market, professionals and students face several critic
 
 ## ?? The Solution
 
-Pravriddhi addresses these challenges through an integrated intelligence platform:
-1. **Extract & Verify:** Parses your resume to construct a personalized **CareerTwin** profile.
-2. **Analyze:** Compares your profile against real-world job market requirements to perform a deep skill gap analysis.
+Pravriddhi addresses these challenges through an integrated intelligence platform based on the core academic concept of **Skill Gap Analysis + Career Path Recommendation**.
+1. **Extract & Verify:** Parses resumes to construct a personalized **CareerTwin** profile.
+2. **Analyze:** Compares the profile against real-world job market requirements to perform a deep skill gap analysis.
 3. **Recommend & Roadmap:** Suggests optimal career paths and generates targeted, step-by-step learning roadmaps.
-4. **Match & Guide:** Intelligently matches you with relevant job opportunities while offering continuous AI-driven mentorship and career scenario simulations.
+4. **Match & Guide:** Intelligently matches users with relevant job opportunities while offering continuous AI-driven mentorship and career scenario simulations.
 
 ---
 
@@ -77,12 +89,12 @@ flowchart TD
 
 ---
 
-## ?? Architecture & Structure
+## ?? Architecture
 
 ```text
-Frontend (React + Tailwind)
+Frontend (React + Tailwind CSS)
    ?
-Application / API Layer (Vite Dev Server)
+Application / API Layer (Vite Development Server / Services)
    ?
 Business & Intelligence Services (Document Parsing, Resume Analysis, Match Algorithms)
    ?
