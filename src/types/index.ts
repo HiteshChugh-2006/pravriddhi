@@ -317,6 +317,13 @@ export interface WorkforceSource {
   publishDate?: string;
 }
 
+
+export interface MarketAnalytics {
+  salaryDistribution: { range: string; percentage: number }[];
+  topSkillsDemand: { skill: string; demandPercentage: number }[];
+  hiringTrends: { timePeriod: string; demandIndex: number }[];
+}
+
 export interface WorkforceIntelligenceResult {
   query: string;
   summary: string;
@@ -330,6 +337,7 @@ export interface WorkforceIntelligenceResult {
   };
   recommendedNextSteps: string[];
   sources: WorkforceSource[];
+  analyticsData?: MarketAnalytics;
   isLiveWeb: boolean;
   timestamp: string;
 }

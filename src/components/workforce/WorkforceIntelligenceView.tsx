@@ -5,6 +5,7 @@ import { LiveWebBadge } from '../common/LiveWebBadge';
 import { SourceCard } from '../common/SourceCard';
 import { SkillChip } from '../common/SkillChip';
 import { MarkdownRenderer } from '../common/MarkdownRenderer';
+import { MarketAnalyticsDashboard } from './MarketAnalyticsDashboard';
 import {
   Search,
   Sparkles,
