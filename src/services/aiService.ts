@@ -933,10 +933,10 @@ export async function queryWorkforceIntelligence(
   let sources: WorkforceSource[] = [];
   let emergingSkills: string[] = [];
   let trendingRoles: string[] = [];
+  let analyticsData: any = undefined;
 
-  if (nvidiaClient) {
-    try {
-      const prompt = `You are Pravriddhi's live Workforce Intelligence Engine.
+  try {
+    const prompt = `You are Pravriddhi's live Workforce Intelligence Engine.
 User Query: "${query}"
 Candidate Context:
 - Target title: ${profile.targetRole || 'Not specified'}
@@ -944,27 +944,47 @@ Candidate Context:
 - Existing Skills in Profile: ${userSkillNames.join(', ') || 'No skills uploaded yet'}
 
 Perform search grounding to extract current 2026 workforce telemetry.
-Structure your answer in 3 concise paragraphs:
+Structure your answer in TWO parts:
+
+PART 1: TEXT
+3 concise paragraphs:
 1. Executive Market Summary (salary velocity, hiring signals, regional/domain trends).
 2. Key Emerging Technical Skills and Target Roles.
-3. Concrete learning steps compared to candidate's background.`;
+3. Concrete learning steps compared to candidate's background.
 
-      const response = await nvidiaClient.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }]
+PART 2: JSON ANALYTICS
+Return exactly this JSON block representing the market data (DO NOT use markdown formatting for the JSON, just raw text starting with {):
+{"analytics": {"salaryDistribution": [{"range": "< 80k", "percentage": 15}, {"range": "80k-120k", "percentage": 45}, {"range": "120k-160k", "percentage": 30}, {"range": "> 160k", "percentage": 10}], "topSkillsDemand": [{"skill": "Python", "demandPercentage": 85}, {"skill": "Cloud", "demandPercentage": 75}], "hiringTrends": [{"timePeriod": "Q1", "demandIndex": 60}, {"timePeriod": "Q2", "demandIndex": 80}]}}`;
+
+    const res = await fetch('/api/ai/groundedContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      let rawText = data.text || '';
+      
+      try {
+        const jsonStart = rawText.indexOf('{"analytics":');
+        if (jsonStart !== -1) {
+          const jsonEnd = rawText.lastIndexOf('}');
+          if (jsonEnd > jsonStart) {
+            const jsonStr = rawText.substring(jsonStart, jsonEnd + 1);
+            const parsed = JSON.parse(jsonStr);
+            analyticsData = parsed.analytics;
+            rawText = rawText.substring(0, jsonStart).trim();
+          }
         }
-      });
-
-      if (response.text) {
-        summary = response.text.trim();
+      } catch (e) {
+        console.error('Failed to parse analytics JSON:', e);
       }
+      summary = rawText.replace(/PART 1: TEXT/i, '').replace(/PART 2: JSON ANALYTICS/i, '').trim();
 
-      const candidates = response.candidates?.[0];
-      const groundingMetadata = (candidates as any)?.groundingMetadata;
-      if (groundingMetadata && groundingMetadata.groundingChunks) {
-        sources = groundingMetadata.groundingChunks
+      const gm = data.groundingMetadata;
+      if (gm && gm.groundingChunks) {
+        sources = gm.groundingChunks
           .map((chunk: any) => {
             const web = chunk.web;
             if (!web || !web.uri) return null;
@@ -979,13 +999,16 @@ Structure your answer in 3 concise paragraphs:
               snippet: web.title
             };
           })
-          .filter(Boolean) as WorkforceSource[];
+          .filter(Boolean);
       }
-    } catch (e) {
-      console.warn('Grounding call fallback:', e);
+    } else {
+      throw new Error('Backend grounded endpoint failed');
     }
+  } catch (e) {
+    console.warn('Grounding call fallback triggered:', e);
   }
 
+  // Fallbacks if API failed or no summary extracted
   if (!summary) {
     summary = `Live hiring signals indicate continuous market demand for engineers with production deployment discipline. Enterprise teams prioritize verifiable proof of working systems over claimed familiarity.`;
     emergingSkills = ['MLOps (MLflow & CI/CD)', 'RAG Pipelines', 'Docker & Kubernetes'];
@@ -1005,17 +1028,9 @@ Structure your answer in 3 concise paragraphs:
   const developing = profile.skills
     .filter((s) => s.type === 'claimed' && emergingSkills.some((es) => es.toLowerCase().includes(s.name.toLowerCase())))
     .map((s) => s.name);
-  const missing = emergingSkills.filter((es) =>
-    !userSkillNames.some((s) => s.toLowerCase().includes(es.toLowerCase()) || es.toLowerCase().includes(s.toLowerCase()))
+  const missing = emergingSkills.filter(
+    (es) => !userSkillNames.some((s) => s.toLowerCase().includes(es.toLowerCase()) || es.toLowerCase().includes(s.toLowerCase()))
   );
-
-  const recommendedNextSteps = [
-    `Complete a containerized project to demonstrate production deployment hygiene`,
-    `Build an automated GitHub Actions CI/CD workflow testing model pipelines`,
-    `Deploy your service to cloud compute with latency telemetry`
-  ];
-
-  const overallScore = Math.min(94, Math.round(50 + matched.length * 12 + developing.length * 6));
 
   return {
     query,
@@ -1026,205 +1041,31 @@ Structure your answer in 3 concise paragraphs:
       matched,
       developing,
       missing,
-      overallScore: profile.skills.length > 0 ? overallScore : 0
+      overallScore: Math.round((matched.length / Math.max(1, emergingSkills.length)) * 100)
     },
-    recommendedNextSteps,
     sources,
-    isLiveWeb: sources.length > 0,
-    timestamp: 'Live Market Telemetry (Just Now)'
-  };
-}
-
-/**
- * GEMINI MULTI-TURN AI CAREER MENTOR
- * Dynamically grounded in candidate's actual CareerTwin, target role, and real job opportunities.
- */
-export async function askGeminiCareerMentor(
-  prompt: string,
-  history: MentorMessage[],
-  profile: UserProfile,
-  recentJob?: JobOpportunity | null,
-  activeSimulationSkills?: string[]
-): Promise<MentorMessage> {
-  const isWebQuery = prompt.toLowerCase().includes('in india') ||
-                     prompt.toLowerCase().includes('salary') ||
-                     prompt.toLowerCase().includes('current trends') ||
-                     prompt.toLowerCase().includes('latest') ||
-                     prompt.toLowerCase().includes('market');
-
-  let answerContent = '';
-  let citations: WorkforceSource[] | undefined = undefined;
-  let isLiveWeb = false;
-
-  const userDemonstrated = profile.skills.filter(s => s.type === 'demonstrated').map(s => `${s.name} (${s.proficiency}%)`);
-  const userClaimed = profile.skills.filter(s => s.type === 'claimed').map(s => `${s.name} (${s.proficiency}%)`);
-
-  if (nvidiaClient) {
-    try {
-      const systemInstruction = `You are Pravriddhi's Executive Career Mentor and Workforce Intelligence Advisor.
-You possess full access to the user's REAL Career Digital Twin:
-- Name: ${profile.name || 'Candidate'}
-- Current Title: ${profile.title || 'Professional'}
-- Target title: ${profile.targetRole || 'Not specified'}
-- Target Alignment: ${profile.targetRoleAlignment}%
-- Demonstrated Skills (Verified by Evidence): ${userDemonstrated.join(', ') || 'None verified yet'}
-- Claimed Skills (Awaiting Evidence): ${userClaimed.join(', ') || 'None yet'}
-${recentJob ? `- Recent Inspected Job: ${recentJob.title} at ${recentJob.company} (${recentJob.matchScore}% Match)` : ''}
-${activeSimulationSkills?.length ? `- Currently Simulated Skills: ${activeSimulationSkills.join(', ')}` : ''}
-
-Style Guide:
-- Be authoritative, encouraging yet rigorous, and deeply grounded in reality.
-- Maintain a technical mentor tone; avoid fluff, generic platitudes, or cheerleading.
-- Base your advice entirely on the user's ACTUAL skills and target role, NEVER on fictitious personas.
-- Provide structured answers with bullet points and concrete action steps.
-- Keep response under 200 words.`;
-
-      const messages = [
-        { role: 'system', content: systemInstruction },
-        ...history.map(msg => ({ role: msg.sender === 'user' ? 'user' : 'assistant', content: msg.content })),
-        { role: 'user', content: prompt }
-      ];
-
-      // Add dev log
-      console.log(`[Debug Pipeline] AI Mentor Request:`, {
-        conversationId: 'session_active',
-        currentUserMessage: prompt,
-        historyLength: history.length,
-        model: 'deepseek-ai/deepseek-v4.1-flash',
-        requestId: Date.now()
-      });
-
-      const response = await nvidiaClient.chat(messages, undefined);
-      if (response && response.text) {
-        answerContent = response.text.trim();
-        console.log(`[Debug Pipeline] AI Mentor Response length:`, answerContent.length);
-      } else {
-        throw new Error('Empty response from AI Mentor');
-      }
-    } catch (e: any) {
-      console.warn('AI Mentor call fallback:', e);
-      answerContent = `I am currently unable to reach the AI Mentor service. Please try again later. Error: ${e.message || 'Unknown'}`;
+    analyticsData: analyticsData || {
+      salaryDistribution: [
+        { range: '< $80k', percentage: 15 },
+        { range: '$80k-$120k', percentage: 45 },
+        { range: '$120k-$160k', percentage: 30 },
+        { range: '> $160k', percentage: 10 }
+      ],
+      topSkillsDemand: [
+        { skill: 'Python', demandPercentage: 85 },
+        { skill: 'Cloud (AWS/GCP)', demandPercentage: 72 },
+        { skill: 'SQL/NoSQL', demandPercentage: 68 },
+        { skill: 'Docker/K8s', demandPercentage: 55 },
+        { skill: 'ML/AI', demandPercentage: 42 }
+      ],
+      hiringTrends: [
+        { timePeriod: 'Jan', demandIndex: 65 },
+        { timePeriod: 'Feb', demandIndex: 72 },
+        { timePeriod: 'Mar', demandIndex: 85 },
+        { timePeriod: 'Apr', demandIndex: 82 },
+        { timePeriod: 'May', demandIndex: 90 }
+      ]
     }
-  }
-
-  return {
-    id: `asst_${Date.now()}`,
-    sender: 'assistant',
-    content: answerContent,
-    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    isLiveWeb,
-    citations,
-    structuredSkills: {
-      matched: userDemonstrated.slice(0, 3).map(s => s.split(' ')[0]),
-      developing: userClaimed.slice(0, 2).map(s => s.split(' ')[0]),
-      missing: ['Production Deployment']
-    }
-  };
-}
-
-/**
- * Generate deep Job Intelligence explanation
- */
-export async function generateJobMatchExplanation(
-  profile: UserProfile,
-  job: JobOpportunity
-): Promise<string> {
-  const matchedList = job.matchedSkills.join(', ');
-  const missingList = job.missingSkills.join(', ');
-
-  if (nvidiaClient) {
-    try {
-      const response = await nvidiaClient.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `You are Pravriddhi's Workforce Intelligence Engine. 
-Generate a concise, professional 2-3 sentence strategic match summary for a user:
-Candidate: ${profile.name || 'Candidate'} (${profile.title || 'Engineer'}), target role ${profile.targetRole}.
-Target Job: ${job.title} at ${job.company}.
-Match Score: ${job.matchScore}%.
-Strong Verified Skills: ${matchedList}.
-Critical Skill Gaps: ${missingList}.
-Explain why they are competitive and what exact actionable capability they need to demonstrate to secure the offer. Do not use generic filler.`
-      });
-      if (response.text) {
-        return response.text.trim();
-      }
-    } catch {
-      // Fallback below
-    }
-  }
-
-  return `Your profile aligns with core requirements at ${job.company} (${matchedList}), supported by your verified evidence. Closing gaps in ${missingList} through verifiable project evidence will directly boost your competitiveness into top-tier candidate pools.`;
-}
-
-/**
- * Compute realistic What-If Career Simulation
- */
-export function calculateCareerSimulation(
-  profile: UserProfile,
-  selectedSkillsToAdd: string[],
-  baseRoleTitle: string = profile.targetRole || 'ML Engineer'
-): SimulationResult {
-  const initial = profile.targetRoleAlignment;
-
-  let totalBoost = 0;
-  const skillWeights: Record<string, number> = {
-    'Docker & Containerization': 6,
-    'MLOps (MLflow & CI/CD)': 8,
-    'Kubernetes Cluster Ops': 5,
-    'AWS SageMaker & Cloud Arch': 4,
-    'LLM Fine-tuning (LoRA/QLoRA)': 6,
-    'AI Agents & LangGraph': 5,
-    'Ray Distributed Computing': 6,
-    'Triton / vLLM Model Serving': 6
-  };
-
-  selectedSkillsToAdd.forEach((s) => {
-    totalBoost += skillWeights[s] || 4;
-  });
-
-  const effectiveBoost = Math.round(totalBoost * (1 - initial / 140));
-  const simulatedAlignment = Math.min(96, initial + effectiveBoost);
-  const delta = simulatedAlignment - initial;
-
-  const roleCompatibilities = [
-    {
-      role: baseRoleTitle,
-      before: initial,
-      after: simulatedAlignment,
-      delta: delta
-    },
-    {
-      role: 'AI / LLM Systems Engineer',
-      before: Math.max(20, initial - 8),
-      after: Math.min(95, initial + Math.round(effectiveBoost * 1.1)),
-      delta: Math.round(effectiveBoost * 1.1)
-    },
-    {
-      role: 'MLOps Infrastructure Engineer',
-      before: Math.max(15, initial - 15),
-      after: Math.min(94, initial + Math.round(effectiveBoost * 1.3)),
-      delta: Math.round(effectiveBoost * 1.3)
-    }
-  ];
-
-  const newJobsUnlocked = Math.round(selectedSkillsToAdd.length * 8 + delta * 1.5);
-  const allPotentialGaps = ['Distributed Training at Scale', 'Causal Inference', 'Kubernetes Deployments', 'Model Governance'];
-  const remainingPriorityGaps = allPotentialGaps.filter(gap => !selectedSkillsToAdd.some(s => gap.toLowerCase().includes(s.toLowerCase().slice(0, 5)))).slice(0, 2);
-
-  const strategicAdvice = selectedSkillsToAdd.length > 0
-    ? `Simulated trajectory indicates that mastering ${selectedSkillsToAdd.slice(0, 2).join(' and ')} elevates your production readiness. Employers value verified code evidence over claimed familiarity.`
-    : `Select candidate skills to run workforce telemetry projection.`;
-
-  return {
-    baseRole: baseRoleTitle,
-    initialAlignment: initial,
-    simulatedAlignment,
-    delta,
-    addedSkills: selectedSkillsToAdd,
-    roleCompatibilities,
-    newJobsUnlocked,
-    remainingPriorityGaps,
-    strategicAdvice
   };
 }
 
