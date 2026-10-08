@@ -978,7 +978,7 @@ Return exactly this JSON block representing the market data (DO NOT use markdown
         summary = rawText.replace(/PART 1: TEXT/i, '').replace(/PART 2: JSON ANALYTICS/i, '').trim();
       }
 
-      const groundingMetadata = response.groundingMetadata;
+      const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
       if (groundingMetadata && groundingMetadata.groundingChunks) {
         sources = groundingMetadata.groundingChunks
           .map((chunk: any) => {
@@ -1158,8 +1158,8 @@ Target Job: ${job.title} at ${job.company}.
 Match Score: ${job.matchScore}%.
 Strong Verified Skills: ${matchedList}.
 Critical Skill Gaps: ${missingList}.
-Explain why they are competitive and what exact actionable capability they need to demonstrate to secure the offer. Do not use generic filler.`
-      });
+Explain why they are competitive and what exact actionable capability they need to demonstrate to secure the offer. Do not use generic filler.` }
+      ], 'nvidia/llama-3.1-nemotron-70b-instruct');
       if (response.text) {
         return response.text.trim();
       }
