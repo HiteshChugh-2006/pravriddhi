@@ -1,0 +1,8 @@
+{
+  "firestore": {
+    "databaseId": "ai-studio-skilltwinai-85cb24a5-005e-4366-92aa-62776061c352",
+    "rules": "firestore.rules",
+    "edition": "ENTERPRISE",
+    "dataAccessMode": "FIRESTORE_NATIVE"
+  }
+}

@@ -1,0 +1,189 @@
+﻿@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #0f172a;
+    background-color: #f8fafc;
+  }
+}
+
+.ambient-bg {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.45) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(237, 233, 254, 0.45) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(207, 250, 254, 0.3) 0px, transparent 50%);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02);
+}
+
+.glass-card-interactive {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-interactive:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(165, 180, 252, 0.7);
+  box-shadow: 0 12px 30px -4px rgba(99, 102, 241, 0.1), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+  transform: translateY(-1px);
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: #0f172a !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  
+  body:has(#printable-roadmap-summary) * {
+    visibility: hidden;
+  }
+  #printable-roadmap-summary, #printable-roadmap-summary * {
+    visibility: visible;
+  }
+  #printable-roadmap-summary {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 24px !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+}
+
+/* Career Roadmap Timeline Path Animations */
+@keyframes roadmap-dash-flow {
+  from {
+    stroke-dashoffset: 32;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes roadmap-glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.4));
+    opacity: 0.85;
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgba(99, 102, 241, 0.85));
+    opacity: 1;
+  }
+}
+
+@keyframes roadmap-emerald-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.4));
+    opacity: 0.9;
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgba(16, 185, 129, 0.9));
+    opacity: 1;
+  }
+}
+
+@keyframes roadmap-amber-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4));
+    opacity: 0.85;
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgba(245, 158, 11, 0.85));
+    opacity: 1;
+  }
+}
+
+@keyframes roadmap-particle-travel {
+  0% {
+    offset-distance: 0%;
+    opacity: 0.2;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0.2;
+  }
+}
+
+.roadmap-flow-path {
+  stroke-dasharray: 8 6;
+  animation: roadmap-dash-flow 1.4s linear infinite;
+}
+
+.roadmap-flow-path-fast {
+  stroke-dasharray: 8 6;
+  animation: roadmap-dash-flow 0.75s linear infinite;
+}
+
+.roadmap-flow-path-amber {
+  stroke-dasharray: 6 4;
+  animation: roadmap-dash-flow 2s linear infinite;
+}
+
+.roadmap-pulse-indigo {
+  animation: roadmap-glow-pulse 2s ease-in-out infinite;
+}
+
+.roadmap-pulse-emerald {
+  animation: roadmap-emerald-pulse 2s ease-in-out infinite;
+}
+
+.roadmap-pulse-amber {
+  animation: roadmap-amber-pulse 2s ease-in-out infinite;
+}

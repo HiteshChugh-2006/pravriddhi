@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User's CareerTwin digital profile including skills, experiences, target role and evidence",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the user"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user"
+        },
+        "targetRole": {
+          "type": "string",
+          "description": "Primary target career role"
+        },
+        "alignmentScore": {
+          "type": "number",
+          "description": "Career alignment percentage score 0-100"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "name", "targetRole"]
+    },
+    "CareerTwinReport": {
+      "title": "CareerTwinReport",
+      "description": "Generated CareerTwin PDF snapshot and 90-day learning roadmap summary",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique report ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Associated user ID"
+        },
+        "targetRole": {
+          "type": "string",
+          "description": "Target role at time of report"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Generation timestamp"
+        }
+      },
+      "required": ["id", "userId", "targetRole", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores user CareerTwin digital profile"
+    },
+    "/users/{userId}/reports/{reportId}": {
+      "schema": {
+        "$ref": "#/entities/CareerTwinReport"
+      },
+      "description": "Stores generated CareerTwin reports"
+    }
+  }
+}
